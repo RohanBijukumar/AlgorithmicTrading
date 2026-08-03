@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "algorithmic-trading-simulator"
+version = "0.2.0"
+description = "Local CLI environment for market-data caching and simulated portfolio trading."
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["ruff>=0.16,<0.17", "jsbeautifier>=2,<3"]
+training = ["torch>=2.10,<3", "numpy>=2,<3"]
+
+[tool.setuptools.packages.find]
+include = ["algotrading*"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
+
+[project.scripts]
+algotrading = "algotrading.cli:main"
+
+[tool.setuptools.package-data]
+algotrading = ["web/static/*", "models/*.json", "universe_seed.json"]
