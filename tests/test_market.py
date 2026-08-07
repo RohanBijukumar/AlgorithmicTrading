@@ -102,9 +102,30 @@ class MarketServiceTests(unittest.TestCase):
             self.assertEqual([item[0] for item in replay], [date(2024, 1, 2), date(2024, 1, 3)])
             self.assertEqual([len(item[1]) for item in replay], [1, 1])
 
-    pass
+    def test_added_symbol_can_be_synced(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db = Database(Path(tmp) / "test.sqlite3")
+            provider = FakeProvider()
+            service = MarketService(db, provider)
 
-    pass
+            service.add_symbol("VOO")
+            result = service.sync(["VOO"], date(2024, 1, 2), date(2024, 1, 3))
+
+            self.assertEqual(result, {"VOO": 2})
+            self.assertIn("VOO", service.list_symbols())
+
+    def test_removed_symbol_is_no_longer_syncable(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db = Database(Path(tmp) / "test.sqlite3")
+            provider = FakeProvider()
+            service = MarketService(db, provider)
+
+            service.add_symbol("VOO")
+            service.remove_symbol("VOO")
+
+            self.assertNotIn("VOO", service.list_symbols())
+            with self.assertRaisesRegex(ValueError, "unsupported symbol"):
+                service.sync(["VOO"], date(2024, 1, 2), date(2024, 1, 3))
 
 
 if __name__ == "__main__":
