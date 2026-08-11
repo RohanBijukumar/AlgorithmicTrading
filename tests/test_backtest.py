@@ -151,7 +151,32 @@ class BacktestServiceTests(unittest.TestCase):
 
     pass
 
-    pass
+    def test_rsi_strength_executes_and_reports_trade_progress(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db = seeded_backtest_db(Path(tmp))
+            service = BacktestService(db)
+            events = []
+
+            result = service.run(
+                "rsi-strength",
+                ["AAPL", "MSFT"],
+                date(2024, 1, 2),
+                date(2024, 2, 20),
+                1000.0,
+                parameters={"lookback_days": 5, "rebalance_days": 5, "top_n": 1},
+                progress=events.append,
+            )
+
+            trade_events = [event for event in events if event["type"] == "trade"]
+            return_events = [event for event in events if event["type"] == "daily_return"]
+            self.assertEqual(len(trade_events), result.trades_executed)
+            self.assertGreater(len(return_events), 0)
+            self.assertAlmostEqual(
+                return_events[-1]["total_return"], result.metrics["total_return"]
+            )
+            self.assertIn("RETURN day", return_events[-1]["message"])
+            self.assertEqual(events[0]["type"], "started")
+            self.assertEqual(events[-1]["type"], "completed")
 
     pass
 
