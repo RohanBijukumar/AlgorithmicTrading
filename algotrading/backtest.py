@@ -856,6 +856,7 @@ def _weighted_orders(context: StrategyContext, weights: dict[str, float]) -> lis
         if price is None:
             continue
         if order.side == "sell":
+            simulated_cash += price * order.shares
             simulated_holdings[order.symbol] = (
                 simulated_holdings.get(order.symbol, 0) - order.shares
             )

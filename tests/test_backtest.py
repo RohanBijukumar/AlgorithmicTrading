@@ -67,7 +67,41 @@ def _bar(symbol: str, trading_date: date, price: float) -> MarketBar:
 
 
 class BacktestServiceTests(unittest.TestCase):
-    pass
+    def test_rebalance_reinvests_proceeds_from_symbols_leaving_selection(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db = Database(Path(tmp) / "test.sqlite3")
+            db.initialize()
+            first = date(2024, 1, 2)
+            second = date(2024, 1, 3)
+            db.insert_market_bars(
+                [
+                    _bar("AAPL", first, 100.0),
+                    _bar("AAPL", second, 100.0),
+                    _bar("MSFT", first, 50.0),
+                    _bar("MSFT", second, 50.0),
+                ]
+            )
+            portfolios = PortfolioService(db)
+            portfolios.create("rotation", 1000.0)
+            portfolios.buy("rotation", "AAPL", 10, first)
+            context = StrategyContext(
+                db=db,
+                portfolio=portfolios,
+                portfolio_name="rotation",
+                current_date=second,
+                symbols=["AAPL", "MSFT"],
+                start=first,
+                end=second,
+                parameters={},
+            )
+
+            orders = _rebalance_to_symbols(context, ["MSFT"])
+            for order in orders:
+                getattr(portfolios, order.side)("rotation", order.symbol, order.shares, second)
+
+            state = portfolios.state("rotation", through=second)
+            self.assertEqual(state.cash, 0.0)
+            self.assertEqual(state.holdings["MSFT"].shares, 20)
 
     def test_buy_and_hold_persists_run_and_summary(self):
         with tempfile.TemporaryDirectory() as tmp:
