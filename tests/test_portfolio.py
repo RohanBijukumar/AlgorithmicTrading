@@ -74,7 +74,25 @@ class PortfolioServiceTests(unittest.TestCase):
             self.assertEqual(valuation.total_value, 990.0)
             self.assertEqual(valuation.unrealized_pnl, -30.0)
 
-    pass
+    def test_value_history_returns_total_value_points(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db = seeded_db(Path(tmp))
+            service = PortfolioService(db)
+            service.create("demo", 1000.0)
+
+            service.buy("demo", "AAPL", 5, date(2024, 1, 2))
+            points = service.value_history("demo", end=date(2024, 1, 4))
+
+            self.assertEqual(
+                [point.valuation_date for point in points],
+                [
+                    date(2024, 1, 2),
+                    date(2024, 1, 3),
+                    date(2024, 1, 4),
+                ],
+            )
+            self.assertEqual([point.total_value for point in points], [1000.0, 1050.0, 950.0])
+            self.assertEqual(points[-1].cash, 500.0)
 
     def test_buy_rejects_insufficient_cash(self):
         with tempfile.TemporaryDirectory() as tmp:
