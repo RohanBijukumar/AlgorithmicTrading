@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <title>AlgorithmicTrading | Research Workspace</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/lucide.min.js" defer></script>
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to workspace</a>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="#overview" title="Open workspace overview"><span class="brand-mark"><i data-lucide="chart-no-axes-combined"></i></span><span><strong>AlgorithmicTrading</strong><small>RESEARCH WORKSPACE</small></span></a>
+      <div class="workspace-label">WORKSPACE</div>
+      <nav class="nav-tabs" aria-label="Primary">
+        <button class="nav-tab active" data-view="overview" title="Workspace and data readiness"><i data-lucide="layout-dashboard"></i>Overview</button>
+        <button class="nav-tab" data-view="market" title="Explore and download price history"><i data-lucide="chart-candlestick"></i>Market</button>
+        <button class="nav-tab" data-view="backtest" title="Configure and test a strategy"><i data-lucide="flask-conical"></i>Strategy Lab</button>
+        <button class="nav-tab" data-view="portfolio" title="Positions, cash, and simulated trades"><i data-lucide="wallet"></i>Portfolios</button>
+        <button class="nav-tab" data-view="runs" title="Compare saved backtest results"><i data-lucide="git-compare-arrows"></i>Run Library</button>
+      </nav>
+      <div class="sidebar-bottom">
+        <span class="environment-label"><span class="status-dot" id="status-dot"></span><span id="status-text">Connecting</span></span>
+        <span class="local-label">LOCAL SIMULATION</span>
+        <span id="db-path" class="db-path" title="Shared storage for web and CLI">SQLite</span>
+        <button class="subtle-button" id="help-open" title="Execution assumptions and terminology"><i data-lucide="circle-help"></i>Reference</button>
+      </div>
+    </aside>
+    <main class="workspace" id="main">
+      <header class="topbar">
+        <div><div class="breadcrumb">Workspace <span>/</span> <span id="view-crumb">Overview</span></div><h1 id="view-title">Overview</h1><p id="view-subtitle">Your research workspace</p></div>
+        <div class="toolbar"><span class="badge neutral">Paper trading</span><button class="icon-button" id="theme-toggle" title="Switch color theme" aria-label="Switch color theme"><i data-lucide="sun"></i></button><button class="icon-button" id="refresh-all" title="Refresh current view" aria-label="Refresh current view"><i data-lucide="refresh-cw"></i></button></div>
+      </header>
+
+      <section class="view active" id="view-overview" aria-label="Overview">
+        <div class="metric-row overview-metrics">
+          <div><span>Active symbols</span><strong id="ov-symbols">-</strong><small id="ov-covered">Checking data</small></div>
+          <div><span>Stored sessions</span><strong id="ov-bars">-</strong><small id="ov-range">Local price history</small></div>
+          <div><span>Saved backtests</span><strong id="ov-runs">-</strong><small>Research history</small></div>
+          <div><span>Portfolios</span><strong id="ov-portfolios">-</strong><small>Simulated accounts</small></div>
+        </div>
+        <section class="panel wide empty-setup" id="first-run" hidden>
+          <div><span class="eyebrow">GET STARTED</span><h2>No market data yet</h2><p>SPY, QQQ, TLT, and GLD</p></div>
+          <form id="starter-form" class="form-grid"><label>From<input name="from" type="date" required title="Include at least one year for signal warm-up"></label><label>To<input name="to" type="date" required title="Last session to download"></label><button type="submit"><i data-lucide="download"></i>Download starter data</button></form>
+        </section>
+        <div class="section-heading"><div><span class="eyebrow">LATEST RESEARCH</span><h2 id="overview-chart-title">Funds over time</h2></div><button class="primary-button" data-go="backtest" title="Configure a new backtest"><i data-lucide="plus"></i>New backtest</button></div>
+        <div class="portfolio-chart overview-chart" id="overview-chart"><div class="chart-empty">Loading...</div></div>
+        <div class="grid two overview-bottom">
+          <section class="panel"><div class="panel-head"><h2>Recent runs</h2><button class="subtle-button" data-go="runs" title="Open saved backtests">View all <i data-lucide="arrow-up-right"></i></button></div><div id="recent-runs" class="recent-runs"></div></section>
+          <section class="panel"><div class="panel-head"><h2>Research starters</h2><span>Established approaches</span></div>
+            <button class="preset-row" data-preset="buy-and-hold" title="Single-fund baseline"><span><strong>Market baseline</strong><small>SPY / buy &amp; hold</small></span><i data-lucide="arrow-up-right"></i></button>
+            <button class="preset-row" data-preset="dual-momentum" title="Positive trends across a diversified ETF basket"><span><strong>Trend rotation</strong><small>Dual momentum / monthly</small></span><i data-lucide="arrow-up-right"></i></button>
+            <button class="preset-row" data-preset="inverse-volatility" title="Balance allocations using historical volatility"><span><strong>Balanced allocation</strong><small>SPY + TLT + GLD / monthly</small></span><i data-lucide="arrow-up-right"></i></button>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="view-market" aria-label="Market">
+        <section class="panel wide">
+          <div class="panel-head"><h2 id="chart-title">SPY</h2><span id="bar-count">0 sessions</span></div>
+          <form id="bars-form" class="market-controls">
+            <label>Symbols<input name="symbol" value="SPY" required title="Space- or comma-separated tickers"></label>
+            <label>Metric<select name="metric" title="Chart vertical axis"><option value="price">Adjusted price</option><option value="return">Return %</option><option value="close">Close</option><option value="open">Open</option><option value="high">High</option><option value="low">Low</option><option value="volume">Volume</option><option value="rsi">RSI (14)</option></select></label>
+            <label>From<input name="from" type="date" required title="Chart start date"></label><label>To<input name="to" type="date" required title="Chart end date"></label>
+            <button type="submit" title="Load selected price series"><i data-lucide="chart-line"></i>Plot</button>
+          </form>
+          <canvas id="price-chart" width="1200" height="360" role="img" aria-label="Historical market prices"></canvas><div id="price-chart-legend" class="chart-legend"></div>
+        </section>
+        <div class="grid two">
+          <section class="panel">
+            <div class="panel-head"><h2>Symbol universe</h2><span id="symbol-count">0 symbols</span></div>
+            <div class="panel-head"><span id="cap-status">Market caps not loaded</span><button type="button" class="icon-button" id="cap-refresh" title="Refresh Nasdaq market caps" aria-label="Refresh market caps"><i data-lucide="refresh-cw"></i></button></div>
+            <form id="expand-universe-form" class="inline-form"><label>Company count<input name="count" type="number" min="1" max="10000" step="1" value="1500" required title="Number of ranked companies to add"></label><button type="submit" title="Add current large and mid-cap companies; retain existing symbols"><i data-lucide="list-plus"></i>Expand</button></form>
+            <label class="search-field"><i data-lucide="search"></i><input id="universe-search" placeholder="Search symbol or company" title="Filter the universe"></label>
+            <form id="add-symbol-form" class="inline-form"><input name="symbol" placeholder="Ticker" required title="Ticker to add" aria-label="New ticker"><input name="asset_name" placeholder="Company name" title="Optional company name" aria-label="Company name"><input name="provider_symbol" placeholder="Provider ticker" title="Optional Yahoo ticker override" aria-label="Provider ticker"><button type="submit" title="Add to active universe"><i data-lucide="plus"></i>Add</button></form>
+            <div class="table-wrap"><table><thead><tr><th>Symbol</th><th title="Latest cached Nasdaq market cap in USD">Market cap</th><th>Sessions</th><th>Coverage</th><th></th></tr></thead><tbody id="universe-table"></tbody></table><div class="pager" id="universe-pager"></div></div>
+          </section>
+          <section class="panel">
+            <div class="panel-head"><h2>Data sync</h2><span id="sync-state" role="status">Idle</span></div>
+            <form id="sync-form" class="form-grid">
+              <label class="full-width">Symbols<input name="symbols" value="SPY QQQ TLT GLD" title="Tickers to download"></label>
+              <label>From<input name="from" type="date" required title="First requested date"></label><label>To<input name="to" type="date" required title="Last requested date"></label>
+              <label class="check-row"><input name="all" type="checkbox" title="Download every active symbol">All active symbols</label>
+              <label class="check-row"><input name="force" type="checkbox" title="Refresh the requested range even if cached">Refresh cached data</label>
+              <div class="form-actions full-width"><button type="submit" title="Download daily Yahoo price history"><i data-lucide="download"></i>Sync data</button><button type="button" class="secondary-button" id="sync-cancel" hidden title="Stop after the current request"><i data-lucide="square"></i>Cancel</button></div>
+            </form>
+            <progress id="sync-progress" max="100" value="0" aria-label="Download progress"></progress>
+            <div id="sync-log" class="activity-log compact-log" aria-live="polite"></div>
+          </section>
+        </div>
+        <section class="panel wide"><div class="panel-head"><h2>Price history</h2><span>Daily OHLCV</span></div><div class="table-wrap"><table><thead><tr><th>Symbol</th><th>Date</th><th>Open</th><th>High</th><th>Low</th><th>Close</th><th>Volume</th></tr></thead><tbody id="bars-table"></tbody></table><div class="pager" id="bars-pager"></div></div></section>
+      </section>
+
+      <section class="view" id="view-backtest" aria-label="Strategy Lab">
+        <div class="lab-layout">
+          <section class="panel lab-config">
+            <div class="panel-head"><h2>Configuration</h2><span id="strategy-count"></span></div>
+            <form id="backtest-form" class="form-grid">
+              <label class="full-width">Strategy<select name="strategy" id="strategy-select" title="Trading rule to evaluate"></select></label>
+              <div class="strategy-context full-width"><span class="badge" id="strategy-category"></span><p id="strategy-description"></p></div>
+              <label class="full-width">Symbols<input name="symbols" value="SPY" list="symbol-selectors" required title="Tickers, @universe, or @topN by current market cap"></label>
+              <datalist id="symbol-selectors"><option value="@universe"></option><option value="@top100"></option><option value="@top50"></option></datalist>
+              <label>From<input name="from" type="date" required title="First test date; earlier cached bars warm up signals"></label><label>To<input name="to" type="date" required title="Last test date"></label>
+              <label>Starting cash<input name="cash" type="number" value="100000" min="1" step="100" required title="Any positive starting balance in USD"></label><label>Benchmark<input name="benchmark" value="SPY" required title="Reference buy-and-hold investment"></label>
+              <label data-param="lookback_days">Lookback<input name="lookback_days" type="number" min="1" title="Historical sessions in the signal"></label>
+              <label data-param="rebalance_days">Rebalance<input name="rebalance_days" type="number" min="1" title="Sessions between allocation decisions"></label>
+              <label data-param="top_n">Positions<input name="top_n" type="number" min="1" title="Maximum number of selected assets"></label>
+              <label data-param="skip_days">Skip recent<input name="skip_days" type="number" min="0" title="Recent sessions excluded from momentum ranking"></label>
+              <label data-param="short_window">Fast average<input name="short_window" type="number" min="1" title="Fast moving-average sessions"></label>
+              <label data-param="long_window">Slow average<input name="long_window" type="number" min="2" title="Slow moving-average sessions"></label>
+              <label data-param="sector_count">Sectors<input name="sector_count" type="number" min="1" title="Number of sectors to select"></label>
+              <label data-param="research_interval_days">Research interval<input name="research_interval_days" type="number" min="1" title="Sessions between discovery checks"></label>
+              <label data-param="agent_max_researches">Research budget<input name="agent_max_researches" type="number" min="1" max="20" title="Maximum candidate decisions"></label>
+              <label data-param="agent_online_research">Online data<select name="agent_online_research" title="Allow bounded Yahoo downloads"><option value="0">Off</option><option value="1">On</option></select></label>
+              <details class="full-width" open><summary title="Execution costs and allocation limits">Costs &amp; risk</summary><div class="form-grid">
+                <label>Fee / order ($)<input name="commission" type="number" value="1" min="0" step="0.01" title="Fixed commission on every fill"></label>
+                <label>Slippage (bps)<input name="slippage_bps" type="number" value="5" min="0" step="0.5" title="Adverse price impact; 1 bp = 0.01%"></label>
+                <label>Position cap (%)<input name="max_position_pct" type="number" value="100" min="1" max="100" title="Maximum allocation at order sizing; may drift with prices"></label>
+                <label>Cash reserve (%)<input name="cash_reserve_pct" type="number" value="0" min="0" max="95" title="Capital held back from new buys"></label>
+                <label>Rebalance band (%)<input name="rebalance_tolerance_pct" type="number" value="0.5" min="0" max="20" step="0.1" title="Ignore small allocation differences to reduce turnover"></label>
+                <label>Random seed<input name="seed" type="number" value="42" min="0" title="Reproducible hybrid starting strategy"></label>
+              </div></details>
+              <div id="preflight-result" class="full-width" role="status"></div>
+              <div class="form-actions full-width"><button type="button" id="check-data" class="secondary-button" title="Check data coverage and parameter validity"><i data-lucide="database"></i>Check data</button><button type="submit" title="Run a next-open historical simulation"><i data-lucide="play"></i>Run backtest</button></div>
+            </form>
+          </section>
+          <section class="lab-results">
+            <div class="panel-head"><h2>Performance</h2><div class="toolbar"><span class="badge" id="bt-status">Ready</span><button class="secondary-button" id="bt-cancel" hidden title="Cancel this backtest"><i data-lucide="square"></i>Cancel</button></div></div>
+            <div class="metric-row">
+              <div><span>Total return</span><strong id="bt-return">-</strong><small id="bt-date">Awaiting a run</small></div>
+              <div><span>Portfolio value</span><strong id="bt-value">-</strong><small>Net of trading costs</small></div>
+              <div><span>Benchmark</span><strong id="bt-benchmark">-</strong><small>Buy &amp; hold</small></div>
+              <div><span>Fills</span><strong id="bt-trades">-</strong><small>Run <span id="bt-run">-</span></small></div>
+            </div>
+            <progress id="bt-progress" max="100" value="0" aria-label="Backtest progress"></progress>
+            <div class="portfolio-chart" id="backtest-value-chart"><div class="chart-empty"><i data-lucide="chart-line"></i><span>No backtest selected</span></div></div>
+            <div id="bt-report-actions" class="toolbar" hidden><button class="secondary-button" id="bt-open-report" title="Open full performance report"><i data-lucide="file-chart-column"></i>Full report</button><button class="subtle-button" id="bt-open-portfolio" title="View this run's holdings"><i data-lucide="wallet"></i>Portfolio</button></div>
+            <div id="bt-insights" class="metric-row small-metrics"></div>
+            <div class="panel-head activity-heading"><h2>Live activity</h2><span id="bt-elapsed">Trades and strategy decisions</span></div><div id="backtest-log" class="activity-log" aria-live="polite"></div>
+          </section>
+        </div>
+        <section class="panel wide"><div class="panel-head"><h2>Strategy catalog</h2><span>Baselines, trend, allocation, and experiments</span></div><div id="strategy-list" class="strategy-list"></div></section>
+      </section>
+
+      <section class="view" id="view-portfolio" aria-label="Portfolios">
+        <div class="grid two">
+          <section class="panel"><div class="panel-head"><h2>Portfolios</h2><span id="portfolio-count">0</span></div>
+            <form id="portfolio-create-form" class="inline-form portfolio-create"><input name="name" placeholder="Portfolio name" required maxlength="120" aria-label="Portfolio name" title="New simulated account name"><input name="cash" type="number" min="0" value="100000" step="any" required title="Starting capital" aria-label="Starting capital"><button type="submit" title="Create a manual portfolio"><i data-lucide="plus"></i>Create</button></form>
+            <div class="table-wrap tall"><table><thead><tr><th>Name</th><th>Starting cash</th><th>Created</th><th></th></tr></thead><tbody id="portfolio-table"></tbody></table></div>
+          </section>
+          <section class="panel"><div class="panel-head"><h2>Trade ticket</h2><span id="selected-portfolio">None selected</span></div>
+            <form id="trade-form" class="form-grid">
+              <label>Portfolio<input name="portfolio" required title="Manual portfolio name"></label><label>Symbol<input name="symbol" value="SPY" required title="Ticker to trade"></label>
+              <label>Shares<input name="shares" type="number" min="1" step="1" required title="Whole normalized units"></label><label>Date<input name="date" type="date" required title="Exact stored trading session"></label>
+              <label>Side<select name="side" title="Buy or sell"><option value="buy">Buy</option><option value="sell">Sell</option></select></label><button type="submit" title="Execute a manual simulated trade"><i data-lucide="arrow-left-right"></i>Place trade</button>
+            </form>
+            <form id="valuation-form" class="market-controls"><label>Portfolio<input name="portfolio" required title="Portfolio to inspect"></label><label>As of<input name="date" type="date" required title="Historical valuation date"></label><button type="submit" title="Load holdings and valuation"><i data-lucide="search"></i>Inspect</button></form>
+          </section>
+        </div>
+        <section class="panel wide">
+          <div class="metric-row"><div><span>Cash</span><strong id="metric-cash">-</strong></div><div><span>Market value</span><strong id="metric-market">-</strong></div><div><span>Total value</span><strong id="metric-total">-</strong></div><div><span>Realized P&amp;L</span><strong id="metric-realized">-</strong></div><div><span>Unrealized P&amp;L</span><strong id="metric-unrealized">-</strong></div></div>
+          <div class="portfolio-chart" id="portfolio-value-chart"><div class="chart-empty">Select a portfolio</div></div>
+          <div class="split-tables">
+            <div><div class="panel-head"><h2>Holdings</h2></div><div class="table-wrap"><table><thead><tr>
+              <th><button class="sort-button" data-sort-table="holdings" data-sort-key="symbol" title="Sort symbol">Symbol</button></th><th><button class="sort-button" data-sort-table="holdings" data-sort-key="shares" title="Sort shares">Shares</button></th><th><button class="sort-button" data-sort-table="holdings" data-sort-key="average_cost" title="Sort average cost">Avg cost</button></th><th><button class="sort-button" data-sort-table="holdings" data-sort-key="market_value" title="Sort market value">Value</button></th>
+            </tr></thead><tbody id="holdings-table"></tbody></table><div class="pager" id="holdings-pager"></div></div></div>
+            <div><div class="panel-head"><h2>Trade history</h2></div><div class="table-wrap"><table><thead><tr>
+              <th><button class="sort-button" data-sort-table="trades" data-sort-key="execution_date" title="Sort date">Date</button></th><th><button class="sort-button" data-sort-table="trades" data-sort-key="side" title="Sort side">Side</button></th><th><button class="sort-button" data-sort-table="trades" data-sort-key="symbol" title="Sort symbol">Symbol</button></th><th><button class="sort-button" data-sort-table="trades" data-sort-key="shares" title="Sort shares">Shares</button></th><th><button class="sort-button" data-sort-table="trades" data-sort-key="execution_price" title="Sort fill price">Price</button></th><th>Fee</th>
+            </tr></thead><tbody id="trades-table"></tbody></table><div class="pager" id="trades-pager"></div></div></div>
+          </div>
+        </section>
+      </section>
+
+      <section class="view" id="view-runs" aria-label="Run Library">
+        <div class="panel-head"><div class="toolbar"><h2>Saved backtests</h2><span id="runs-count">0</span></div><button id="compare-runs" class="secondary-button" title="Compare two to four checked runs"><i data-lucide="git-compare-arrows"></i>Compare selected</button></div>
+        <label class="search-field"><i data-lucide="search"></i><input id="runs-search" placeholder="Search strategy or run ID" title="Filter saved runs"></label>
+        <div class="table-wrap"><table><thead><tr><th></th><th>Run</th><th>Strategy</th><th>Test window</th><th>Return</th><th>Drawdown</th><th>Sharpe</th><th>Fills</th><th></th></tr></thead><tbody id="runs-table"></tbody></table><div class="pager" id="runs-pager"></div></div>
+        <section id="comparison" class="panel wide" hidden><div class="panel-head"><h2>Run comparison</h2><span id="comparison-note"></span></div><div id="comparison-chart" class="portfolio-chart"></div><div id="comparison-table" class="table-wrap"></div></section>
+        <section id="run-report" class="panel wide" hidden>
+          <div class="section-heading"><div><span class="eyebrow" id="report-id"></span><h2 id="report-title">Performance report</h2></div><div class="toolbar"><button id="rerun" class="secondary-button" title="Load these exact settings in Strategy Lab"><i data-lucide="rotate-ccw"></i>Rerun</button><a id="export-csv" class="icon-button" title="Download daily equity CSV" aria-label="Download daily equity CSV"><i data-lucide="sheet"></i></a><a id="export-json" class="icon-button" title="Download full report JSON" aria-label="Download full report JSON"><i data-lucide="download"></i></a></div></div>
+          <div id="report-metrics" class="metric-row"></div>
+          <div class="segmented" role="group" aria-label="Report chart metric"><button data-report-chart="equity" class="active" title="Portfolio value and benchmark">Equity</button><button data-report-chart="drawdown" title="Decline from the previous equity peak">Drawdown</button></div>
+          <div id="report-chart" class="portfolio-chart"></div><div id="report-legend" class="chart-legend"></div>
+          <div class="grid two"><section><div class="panel-head"><h2>Monthly returns</h2></div><div id="monthly-returns" class="monthly-grid"></div></section><section><div class="panel-head"><h2>Profit attribution</h2><span>Realized + unrealized</span></div><div id="attribution" class="table-wrap"></div></section></div>
+          <details class="report-assumptions" open><summary title="Data quality and execution assumptions">Assumptions &amp; data quality</summary><div id="report-warnings"></div><dl id="report-parameters"></dl></details>
+        </section>
+      </section>
+    </main>
+  </div>
+  <dialog id="help-dialog"><div class="panel-head"><h2>Research reference</h2><button class="icon-button" id="help-close" title="Close reference" aria-label="Close reference"><i data-lucide="x"></i></button></div>
+    <dl><dt>Return</dt><dd>Change from starting capital, after trading costs. Green is positive; red is negative.</dd><dt>Drawdown</dt><dd>Decline from the highest portfolio value reached so far.</dd><dt>Sharpe / Sortino</dt><dd>Return relative to total / downside volatility. Undefined ratios show a dash.</dd><dt>Execution</dt><dd>Backtest signals use the close; orders fill at the next session's adjusted open. Manual trades use an exact-session adjusted close.</dd><dt>Data basis</dt><dd>USD, adjusted-price simulation. Shares are normalized units; dividends and splits are not separate ledger events.</dd><dt>Universe</dt><dd>@universe is all active symbols. @topN ranks active companies by current cached Nasdaq USD market caps. N can be any positive integer; rankings are not historical constituents.</dd><dt>Research limits</dt><dd>Current constituents create survivorship bias. Missing held prices are carried forward and flagged. Neural and discovery strategies are experimental.</dd><dt>CLI</dt><dd>The web workspace and python3 -m algotrading share the same local database. See README.md for setup and help.md for command reference.</dd></dl>
+  </dialog>
+  <dialog id="confirm-dialog"><h2 id="confirm-title">Confirm deletion</h2><p id="confirm-message"></p><div class="form-actions"><button id="confirm-no" class="secondary-button">Cancel</button><button id="confirm-yes" class="danger-button">Delete</button></div></dialog>
+  <div id="toast" role="status"></div><div class="chart-tooltip" id="chart-tooltip-layer" hidden></div>
+</body>
+</html>
