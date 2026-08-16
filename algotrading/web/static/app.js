@@ -389,7 +389,7 @@ async function loadBars(symbols, from, to, metric = "price") {
   drawMarket();
 }
 
-function chartTickIndexes(count, desired = 2) {
+function chartTickIndexes(count, desired = 5) {
   return count <= desired ? Array.from({
     length: count
   }, (_, i) => i) : Array.from({
@@ -454,7 +454,7 @@ function drawSeries(selector, series, options = {}) {
   const x = i => pad.left + (dates.length === 1 ? .5 : i / (dates.length - 1)) * (width - pad.left - pad.right);
   const y = v => pad.top + (max - v) / (max - min) * (height - pad.top - pad.bottom),
     format = options.percent ? pct : compactMoney;
-  let svg = '<svg viewBox="0 0 ' + width + ' ' + height + '" role="img" aria-label="' + esc(options.title || "Funds over time") + '"><text x="' + pad.left + '" y="18" class="chart-title">' + esc(options.title || "Funds over time") + '</text>';
+  let svg = '<svg viewBox="0 0 ' + width + ' ' + height + '" role="img" aria-label="' + esc(options.title || "Portfolio value over time") + '"><text x="' + pad.left + '" y="18" class="chart-title">' + esc(options.title || "Portfolio value over time") + '</text>';
   for (let i = 0; i < 4; i++) {
     const v = max - (max - min) * i / 3,
       yy = y(v);
