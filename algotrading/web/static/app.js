@@ -190,7 +190,7 @@ async function refreshCurrent() {
 }
 
 function adaptivePageSize(count) {
-  return 50;
+  return count > 10 && count < 15 ? count : 10;
 }
 
 function visiblePages(page, total) {
