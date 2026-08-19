@@ -112,7 +112,16 @@ class PortfolioServiceTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "insufficient shares"):
                 service.sell("demo", "AAPL", 1, date(2024, 1, 2))
 
-    pass
+    def test_delete_portfolio_removes_trade_ledger(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db = seeded_db(Path(tmp))
+            service = PortfolioService(db)
+            service.create("demo", 1000.0)
+            service.buy("demo", "AAPL", 1, date(2024, 1, 2))
+
+            self.assertTrue(db.delete_portfolio("demo"))
+            self.assertIsNone(db.get_portfolio("demo"))
+            self.assertFalse(db.delete_portfolio("demo"))
 
 
 if __name__ == "__main__":
