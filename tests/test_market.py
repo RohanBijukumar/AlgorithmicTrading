@@ -59,9 +59,56 @@ class FakeProvider:
 
 
 class MarketServiceTests(unittest.TestCase):
-    pass
+    def test_invalid_provider_data_records_failure_and_continues(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db = Database(Path(tmp) / "test.sqlite3")
+            provider = FakeProvider()
+            original = provider.fetch_daily
 
-    pass
+            def fetch(symbol, *args, **kwargs):
+                result = original(symbol, *args, **kwargs)
+                if symbol == "AAPL":
+                    return replace(result, bars=[replace(result.bars[0], close=float("nan"))])
+                return result
+
+            service = MarketService(db, provider)
+            events = []
+            with patch.object(provider, "fetch_daily", side_effect=fetch):
+                result = service.sync(
+                    ["AAPL", "MSFT"],
+                    date(2024, 1, 2),
+                    date(2024, 1, 3),
+                    continue_on_error=True,
+                    progress=events.append,
+                )
+            self.assertEqual(result, {"MSFT": 2})
+            self.assertIn("AAPL", service.errors)
+            self.assertIsNone(db.get_coverage("AAPL"))
+            self.assertEqual(
+                [e["status"] for e in events], ["started", "failed", "started", "completed"]
+            )
+            with db.connect() as conn:
+                self.assertEqual(
+                    conn.execute(
+                        "SELECT success FROM provider_fetches WHERE symbol='AAPL'"
+                    ).fetchone()[0],
+                    0,
+                )
+
+    def test_provider_exception_is_recorded_and_next_symbol_runs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db = Database(Path(tmp) / "test.sqlite3")
+            provider = FakeProvider()
+            valid = provider.fetch_daily("MSFT", date(2024, 1, 2), date(2024, 1, 3))
+            service = MarketService(db, provider)
+            with patch.object(
+                provider, "fetch_daily", side_effect=[TimeoutError("timed out"), valid]
+            ):
+                result = service.sync(
+                    ["AAPL", "MSFT"], date(2024, 1, 2), date(2024, 1, 3), continue_on_error=True
+                )
+            self.assertEqual(result, {"MSFT": 2})
+            self.assertEqual(service.errors, {"AAPL": "timed out"})
 
     def test_sync_caches_fully_covered_ranges(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -76,7 +123,17 @@ class MarketServiceTests(unittest.TestCase):
             self.assertEqual(second, {"AAPL": 0})
             self.assertEqual(len(provider.calls), 1)
 
-    pass
+    def test_sync_reports_progress(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db = Database(Path(tmp) / "test.sqlite3")
+            provider = FakeProvider()
+            service = MarketService(db, provider)
+            events = []
+
+            service.sync(["AAPL"], date(2024, 1, 2), date(2024, 1, 3), progress=events.append)
+
+            self.assertEqual([event["status"] for event in events], ["started", "completed"])
+            self.assertEqual(events[-1]["rows"], 2)
 
     def test_price_uses_previous_trading_day(self):
         with tempfile.TemporaryDirectory() as tmp:
