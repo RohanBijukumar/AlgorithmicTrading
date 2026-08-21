@@ -158,11 +158,80 @@ class BacktestServiceTests(unittest.TestCase):
             self.assertGreater(result.trades_executed, 0)
             self.assertIn("total_return", result.metrics)
 
-    pass
+    def test_buy_and_hold_enters_on_first_available_trading_date(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db = seeded_backtest_db(Path(tmp))
+            service = BacktestService(db)
 
-    pass
+            result = service.run(
+                "buy-and-hold",
+                ["AAPL"],
+                date(2024, 1, 1),
+                date(2024, 1, 5),
+                1000.0,
+            )
 
-    pass
+            self.assertEqual(result.trades_executed, 1)
+
+    def test_backtest_ignores_symbols_without_data_in_window(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db = Database(Path(tmp) / "test.sqlite3")
+            db.initialize()
+            db.insert_market_bars(
+                [
+                    _bar("AAPL", date(2024, 1, 2), 100.0),
+                    _bar("AAPL", date(2024, 1, 3), 101.0),
+                    _bar("SPY", date(2024, 1, 2), 400.0),
+                    _bar("SPY", date(2024, 1, 3), 401.0),
+                ]
+            )
+            service = BacktestService(db)
+
+            result = service.run(
+                "equal-weight",
+                ["AAPL", "MSFT"],
+                date(2024, 1, 2),
+                date(2024, 1, 3),
+                1000.0,
+                parameters={"rebalance_days": 1},
+            )
+
+            row = db.get_backtest_run(result.run_id)
+            summary = json.loads(row["result_summary_json"])
+            self.assertEqual(summary["symbols"], ["AAPL"])
+            self.assertGreater(result.trades_executed, 0)
+
+    def test_rebalance_waits_until_symbol_has_current_date_data(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db = Database(Path(tmp) / "test.sqlite3")
+            db.initialize()
+            db.add_symbol("IPO")
+            db.insert_market_bars(
+                [
+                    _bar("AAPL", date(2024, 1, 2), 100.0),
+                    _bar("AAPL", date(2024, 1, 3), 100.0),
+                    _bar("AAPL", date(2024, 1, 4), 100.0),
+                    _bar("IPO", date(2024, 1, 4), 50.0),
+                    _bar("SPY", date(2024, 1, 2), 400.0),
+                    _bar("SPY", date(2024, 1, 3), 401.0),
+                    _bar("SPY", date(2024, 1, 4), 402.0),
+                ]
+            )
+            service = BacktestService(db)
+
+            result = service.run(
+                "equal-weight",
+                ["AAPL", "IPO"],
+                date(2024, 1, 2),
+                date(2024, 1, 4),
+                1000.0,
+                parameters={"rebalance_days": 1},
+            )
+
+            trades = db.get_trades(db.get_portfolio(result.portfolio_name)["id"])
+            ipo_trades = [trade for trade in trades if trade.symbol == "IPO"]
+            # The IPO's first close is the final session, so there is no next open to fill.
+            self.assertEqual(ipo_trades, [])
 
     def test_universe_keyword_expands_to_all_tradeable_symbols(self):
         with tempfile.TemporaryDirectory() as tmp:
