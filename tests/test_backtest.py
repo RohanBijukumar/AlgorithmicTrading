@@ -281,7 +281,40 @@ class BacktestServiceTests(unittest.TestCase):
             self.assertEqual(events[0]["type"], "started")
             self.assertEqual(events[-1]["type"], "completed")
 
-    pass
+    def test_hybrid_strategy_switches_and_reports_progress(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db = Database(Path(tmp) / "test.sqlite3")
+            db.initialize()
+            start = date(2024, 1, 2)
+            bars = []
+            for offset in range(16):
+                trading_date = start + timedelta(days=offset)
+                bars.extend(
+                    [
+                        _bar("AAPL", trading_date, 100.0 + offset * 4),
+                        _bar("MSFT", trading_date, 100.0 - offset),
+                        _bar("SPY", trading_date, 400.0 + offset),
+                    ]
+                )
+            db.insert_market_bars(bars)
+            service = BacktestService(db)
+            events = []
+
+            result = service.run(
+                "hybrid",
+                ["AAPL", "MSFT"],
+                start,
+                start + timedelta(days=15),
+                1000.0,
+                parameters={"lookback_days": 1, "rebalance_days": 5, "top_n": 1},
+                progress=events.append,
+            )
+
+            hybrid_events = [event for event in events if event["type"] == "strategy_switch"]
+            self.assertGreater(result.trades_executed, 0)
+            self.assertGreaterEqual(len(hybrid_events), 2)
+            self.assertIn("HYBRID initial strategy", hybrid_events[0]["message"])
+            self.assertTrue(any("HYBRID switch" in event["message"] for event in hybrid_events))
 
     pass
 
