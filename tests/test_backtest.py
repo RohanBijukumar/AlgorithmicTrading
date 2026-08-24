@@ -316,7 +316,17 @@ class BacktestServiceTests(unittest.TestCase):
             self.assertIn("HYBRID initial strategy", hybrid_events[0]["message"])
             self.assertTrue(any("HYBRID switch" in event["message"] for event in hybrid_events))
 
-    pass
+    def test_neural_strategies_are_available(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db = seeded_backtest_db(Path(tmp))
+            service = BacktestService(db)
+
+            strategies = service.strategies()
+
+            self.assertIn("nn-pattern", strategies)
+            self.assertIn("nn-sector-rotation", strategies)
+            self.assertIn("nn-risk-adjusted", strategies)
+            self.assertIn("agentic-research", strategies)
 
     pass
 
