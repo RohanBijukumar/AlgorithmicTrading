@@ -1,0 +1,29 @@
+{
+  "name": "nn_sector_rotation_v1",
+  "description": "Pre-trained lightweight feed-forward model fitted with PyTorch on pre-2023 local historical OHLCV windows; runtime uses pure-Python inference.",
+  "framework": "pytorch",
+  "runtime": "pure-python-feed-forward-inference",
+  "trained_from": "2020-01-02",
+  "trained_through": "2022-12-31",
+  "validation_start": "2023-01-01",
+  "validation_end": "2023-12-31",
+  "first_allowed_backtest_start": "2024-01-01",
+  "target_horizon_days": 21,
+  "feature_window_days": 63,
+  "input_features": ["return_5d", "return_21d", "return_63d", "volatility_21d", "rsi_14", "drawdown_63d", "volume_trend_21d"],
+  "hidden_bias": [-0.26496679, 0.12652102, 0.10766294, 0.2203657, 0.24418935, 0.16472198],
+  "hidden_weights": [
+    [0.38760662, -0.10752205, -0.16764909, 0.13592382, -0.02818578, 0.3686749, -0.28810179],
+    [-0.19301221, -0.20124249, 0.06683663, 0.09624612, -0.36286819, 0.27243605, 0.04507546],
+    [0.24008594, 0.25479591, -0.47236153, -0.06467541, 0.16119669, 0.16131838, -0.10848476],
+    [-0.22258447, -0.15609634, 0.4504112, 0.43473414, -0.1434159, -0.50015229, 0.17001972],
+    [0.01208469, 0.36512274, 0.21008439, 0.06708062, -0.12939166, -0.21818739, 0.18136612],
+    [-0.18085852, 0.01650998, -0.12258161, 0.07512168, 0.09710268, 0.24547185, 0.38977009]
+  ],
+  "output_bias": -0.00945438,
+  "output_weights": [-0.13021374, -0.10019249, -0.00140845, 0.24925359, -0.16380839, -0.07677866],
+  "training_example_count": 20000,
+  "validation_example_count": 8000,
+  "training_loss": 0.18458538,
+  "validation_loss": 0.14828809
+}

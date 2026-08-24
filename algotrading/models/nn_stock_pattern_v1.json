@@ -1,0 +1,29 @@
+{
+  "name": "nn_stock_pattern_v1",
+  "description": "Pre-trained lightweight feed-forward model fitted with PyTorch on pre-2023 local historical OHLCV windows; runtime uses pure-Python inference.",
+  "framework": "pytorch",
+  "runtime": "pure-python-feed-forward-inference",
+  "trained_from": "2020-01-02",
+  "trained_through": "2022-12-31",
+  "validation_start": "2023-01-01",
+  "validation_end": "2023-12-31",
+  "first_allowed_backtest_start": "2024-01-01",
+  "target_horizon_days": 21,
+  "feature_window_days": 63,
+  "input_features": ["return_5d", "return_21d", "return_63d", "volatility_21d", "rsi_14", "drawdown_63d", "volume_trend_21d"],
+  "hidden_bias": [-0.06517596, -0.24680272, -0.25189599, 0.10926381, 0.2705631, -0.18723492],
+  "hidden_weights": [
+    [-0.19108251, -0.36755353, 0.75660414, -0.30816597, 0.27548659, -0.03447457, -0.0392133],
+    [-0.20930809, 0.29876319, 0.07437763, -0.28803986, 0.15466073, 0.066398, -0.29681191],
+    [0.78664428, -0.23631956, -0.79236561, -0.11837668, 0.20464909, 0.79316819, -0.079513],
+    [0.0520371, -0.16542524, 0.33826026, 0.44230038, -0.33192861, -0.39916241, 0.30342424],
+    [-0.36161911, 0.1094084, 0.69762945, 0.04079315, -0.48601708, -0.00606065, 0.22913857],
+    [-0.17236876, 0.46308646, -0.1397792, -0.1648165, -0.19192179, 0.0424723, 0.18432902]
+  ],
+  "output_bias": -0.0339504,
+  "output_weights": [0.12657699, -0.08796018, -0.25367814, 0.14644179, -0.25553146, 0.00776158],
+  "training_example_count": 20000,
+  "validation_example_count": 8000,
+  "training_loss": 0.18419757,
+  "validation_loss": 0.14845718
+}
