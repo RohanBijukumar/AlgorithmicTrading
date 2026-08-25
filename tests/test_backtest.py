@@ -328,7 +328,41 @@ class BacktestServiceTests(unittest.TestCase):
             self.assertIn("nn-risk-adjusted", strategies)
             self.assertIn("agentic-research", strategies)
 
-    pass
+    def test_agentic_research_discovers_buys_and_records_decision(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db = seeded_backtest_db(Path(tmp))
+            service = BacktestService(db)
+            events = []
+
+            result = service.run(
+                "agentic-research",
+                ["AAPL"],
+                date(2024, 1, 2),
+                date(2024, 2, 20),
+                1000.0,
+                parameters={
+                    "lookback_days": 5,
+                    "research_interval_days": 5,
+                    "agent_max_researches": 2,
+                    "agent_online_research": 0,
+                    "top_n": 1,
+                },
+                progress=events.append,
+            )
+
+            portfolio_id = db.get_portfolio(result.portfolio_name)["id"]
+            decisions = db.list_research_decisions(portfolio_id)
+            app_trades = [
+                trade
+                for trade in db.get_trades(portfolio_id)
+                if trade.symbol == "APP" and trade.side == "buy"
+            ]
+            self.assertGreater(result.trades_executed, 0)
+            self.assertGreaterEqual(len(decisions), 1)
+            self.assertEqual(decisions[0]["symbol"], "APP")
+            self.assertEqual(decisions[0]["verdict"], "TAKE")
+            self.assertTrue(app_trades)
+            self.assertTrue(any(event["type"] == "research" for event in events))
 
     pass
 
