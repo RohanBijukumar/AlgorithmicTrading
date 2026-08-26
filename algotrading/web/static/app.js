@@ -853,7 +853,7 @@ async function watchBacktest(id) {
           lastChart = performance.now();
         }
       }
-      appendActivity("#backtest-log", job.events.filter(e => ["daily_return", "trade", "strategy_switch", "model_fold", "research", "research_sync", "order_rejected"].includes(e.type)));
+      appendActivity("#backtest-log", job.events.filter(e => ["trade", "strategy_switch", "model_fold", "research", "research_sync", "order_rejected"].includes(e.type)));
       if (job.status !== "running") {
         terminal = true;
         if (job.status === "failed") throw new Error(job.error);

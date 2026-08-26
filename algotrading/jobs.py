@@ -43,7 +43,7 @@ class JobStore:
                 job["points"].append(
                     {k: event[k] for k in ("date", "cash", "market_value", "total_value")}
                 )
-            if True:
+            else:
                 job["cursor"] += 1
                 job["events"].append({**event, "sequence": job["cursor"]})
             if event.get("status") in ("covered", "completed", "failed"):

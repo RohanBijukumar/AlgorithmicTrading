@@ -36,7 +36,26 @@ class WebTests(unittest.TestCase):
             )
         )
 
-    pass
+    def test_job_keeps_fractional_costs_and_live_metrics_out_of_activity(self):
+        job_id = self.handler.backtest_jobs.create()
+        self.handler._run_backtest_job(
+            job_id,
+            {
+                "strategy": "buy-and-hold",
+                "symbols": ["AAPL"],
+                "from": "2024-01-02",
+                "to": "2024-01-12",
+                "cash": 10000,
+            },
+            {"commission": 0.25, "slippage_bps": 2.5},
+        )
+        job = self.handler.backtest_jobs.snapshot(job_id)
+        self.assertEqual(job["status"], "completed")
+        self.assertEqual(job["result"]["metrics"]["fees"], 0.25)
+        self.assertTrue(job["latest"])
+        self.assertFalse(any(e["type"] == "daily_return" for e in job["events"]))
+        self.handler._handle_get(f"/api/backtests/{job['result']['run_id']}/report", {})
+        json.dumps(self.responses[-1], default=str, allow_nan=False)
 
     pass
 
