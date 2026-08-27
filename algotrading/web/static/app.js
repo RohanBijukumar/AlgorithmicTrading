@@ -848,7 +848,7 @@ async function watchBacktest(id) {
         setMetric("#bt-benchmark", job.latest.benchmark_return);
         $("#bt-trades").textContent = job.latest.trades_executed;
         $("#bt-progress").value = 100 * job.latest.completed_days / job.latest.total_days;
-        if (true) {
+        if (performance.now() - lastChart > 750 || job.status !== "running") {
           renderPortfolioChart(job.points, [], "#backtest-value-chart");
           lastChart = performance.now();
         }
