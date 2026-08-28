@@ -65,7 +65,28 @@ class EngineTests(unittest.TestCase):
 
     pass
 
-    pass
+    def test_costs_and_attribution_reconcile(self):
+        result = self.run_strategy(
+            "momentum",
+            {
+                "lookback_days": 5,
+                "rebalance_days": 5,
+                "top_n": 1,
+                "commission": 2.5,
+                "slippage_bps": 12.5,
+            },
+            symbols=["AAPL", "MSFT"],
+        )
+        report = backtest_report(self.db, result.run_id)
+        audit = PortfolioService(self.db).audit(result.portfolio_name, result.end)
+        self.assertTrue(audit["reconciled"])
+        self.assertAlmostEqual(result.metrics["fees"], len(report["trades"]) * 2.5)
+        self.assertAlmostEqual(
+            sum(p["total_pnl"] for p in report["run"]["result_summary"]["attribution"]),
+            result.metrics["end_value"] - 10000,
+        )
+        self.assertGreater(result.metrics["slippage"], 0)
+        self.assertTrue(all(p["cash"] >= 0 for p in report["equity"]))
 
     pass
 
@@ -133,11 +154,44 @@ class EngineTests(unittest.TestCase):
 
 
 class LedgerSafetyTests(unittest.TestCase):
-    pass
+    def test_retroactive_and_non_session_trades_are_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db = seeded_backtest_db(Path(tmp))
+            service = PortfolioService(db)
+            service.create("manual", 1000)
+            service.buy("manual", "AAPL", 1, date(2024, 1, 4))
+            with self.assertRaisesRegex(ValueError, "backdated"):
+                service.buy("manual", "AAPL", 1, date(2024, 1, 2))
+            with self.assertRaises(LookupError):
+                service.buy("manual", "AAPL", 1, date(2025, 1, 1))
+            with self.assertRaisesRegex(ValueError, "positive integer"):
+                service.buy("manual", "AAPL", 1.5, date(2024, 1, 5))
 
-    pass
+    def test_concurrent_buys_cannot_double_spend(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db = seeded_backtest_db(Path(tmp))
+            service = PortfolioService(db)
+            service.create("manual", 100)
 
-    pass
+            def buy(_):
+                try:
+                    service.buy("manual", "AAPL", 1, date(2024, 1, 2))
+                    return True
+                except ValueError:
+                    return False
+
+            with ThreadPoolExecutor(2) as pool:
+                outcomes = list(pool.map(buy, range(2)))
+            self.assertEqual(sum(outcomes), 1)
+            self.assertEqual(service.state("manual").cash, 0)
+
+    def test_trading_session_metrics_include_first_loss(self):
+        metrics = performance_metrics([{"total_value": 90}, {"total_value": 99}], 100)
+        self.assertAlmostEqual(metrics["max_drawdown"], -0.1)
+        self.assertAlmostEqual(metrics["total_return"], -0.01)
+        self.assertEqual(metrics["trading_days"], 2)
+        self.assertIsNone(metrics["cagr"])
+        self.assertIsNone(performance_metrics([{"total_value": 100}] * 3, 100)["sharpe"])
 
     pass
 
