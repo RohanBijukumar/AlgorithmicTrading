@@ -134,11 +134,42 @@ class EngineTests(unittest.TestCase):
 
         self.assertEqual(trades(first), trades(second))
 
-    pass
+    def test_new_strategies_run_and_respect_cash_cap(self):
+        for strategy in ("dual-momentum", "time-series-momentum", "inverse-volatility"):
+            with self.subTest(strategy=strategy):
+                params = {
+                    "lookback_days": 10,
+                    "rebalance_days": 5,
+                    "max_position_pct": 25,
+                    "cash_reserve_pct": 10,
+                }
+                if strategy == "dual-momentum":
+                    params["skip_days"] = 2
+                result = self.run_strategy(strategy, params)
+                self.assertGreater(result.trades_executed, 0)
+                self.assertGreater(result.metrics["cash_pct"], 0.65)
+                self.assertTrue(
+                    PortfolioService(self.db).audit(result.portfolio_name, result.end)["reconciled"]
+                )
 
-    pass
+    def test_prestart_history_warms_up_signals(self):
+        result = self.service.run(
+            "momentum",
+            ["AAPL"],
+            date(2024, 2, 1),
+            date(2024, 2, 20),
+            10000,
+            {"lookback_days": 5, "rebalance_days": 21},
+        )
+        trade = self.db.get_trades(self.db.get_portfolio(result.portfolio_name)["id"])[0]
+        self.assertEqual(trade.execution_date, date(2024, 2, 2))
 
-    pass
+    def test_hybrid_is_reproducible(self):
+        params = {"lookback_days": 5, "rebalance_days": 5, "top_n": 1, "seed": 43}
+        a = self.run_strategy("hybrid", params, ["AAPL", "MSFT"])
+        b = self.run_strategy("hybrid", params, ["AAPL", "MSFT"])
+        self.assertEqual(a.metrics, b.metrics)
+        self.assertEqual(a.trades_executed, b.trades_executed)
 
     pass
 

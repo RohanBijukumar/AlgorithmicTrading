@@ -368,7 +368,40 @@ class BacktestServiceTests(unittest.TestCase):
 
     pass
 
-    pass
+    def test_additional_cross_sectional_strategies_execute(self):
+        strategies = {
+            "mean-reversion": {"lookback_days": 5, "rebalance_days": 5, "top_n": 1},
+            "low-volatility": {"lookback_days": 5, "rebalance_days": 5, "top_n": 1},
+            "breakout": {"lookback_days": 5, "rebalance_days": 5, "top_n": 1},
+            "trend-following": {"lookback_days": 5, "rebalance_days": 5, "top_n": 1},
+            "rsi-strength": {"lookback_days": 5, "rebalance_days": 5, "top_n": 1},
+            "hybrid": {"lookback_days": 5, "rebalance_days": 5, "top_n": 1},
+            "nn-pattern": {"lookback_days": 63, "rebalance_days": 5, "top_n": 1},
+            "nn-sector-rotation": {"lookback_days": 63, "rebalance_days": 5, "top_n": 1},
+            "nn-risk-adjusted": {"lookback_days": 63, "rebalance_days": 5, "top_n": 1},
+            "agentic-research": {
+                "lookback_days": 5,
+                "research_interval_days": 5,
+                "top_n": 1,
+                "agent_online_research": 0,
+            },
+        }
+        for strategy_name, parameters in strategies.items():
+            with self.subTest(strategy=strategy_name):
+                with tempfile.TemporaryDirectory() as tmp:
+                    db = seeded_backtest_db(Path(tmp))
+                    service = BacktestService(db)
+
+                    result = service.run(
+                        strategy_name,
+                        ["AAPL", "MSFT"],
+                        date(2024, 1, 2),
+                        date(2024, 3, 11) if strategy_name.startswith("nn-") else date(2024, 2, 20),
+                        1000.0,
+                        parameters=parameters,
+                    )
+
+                    self.assertGreater(result.trades_executed, 0)
 
 
 if __name__ == "__main__":
