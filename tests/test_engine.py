@@ -59,7 +59,13 @@ class EngineTests(unittest.TestCase):
         self.assertEqual(trades[0].shares, 50)
         self.assertAlmostEqual(result.metrics["total_return"], -0.05)
 
-    pass
+    def test_startup_callback_failure_removes_incomplete_portfolio(self):
+        before = len(self.db.list_portfolios())
+        with self.assertRaisesRegex(RuntimeError, "progress unavailable"):
+            self.run_strategy(
+                progress=lambda event: (_ for _ in ()).throw(RuntimeError("progress unavailable"))
+            )
+        self.assertEqual(len(self.db.list_portfolios()), before)
 
     pass
 
@@ -171,9 +177,29 @@ class EngineTests(unittest.TestCase):
         self.assertEqual(a.metrics, b.metrics)
         self.assertEqual(a.trades_executed, b.trades_executed)
 
-    pass
+    def test_invalid_parameters_do_not_leave_portfolios(self):
+        for params in (
+            {"rebalance_days": 0},
+            {"top_n": 2.5},
+            {"slippage_bps": -1},
+            {"commission": float("nan")},
+        ):
+            with self.subTest(params=params), self.assertRaises(ValueError):
+                self.run_strategy(params=params)
+        self.assertEqual(self.db.list_portfolios(), [])
 
-    pass
+    def test_cancel_cleans_up_portfolio_and_run(self):
+        with self.assertRaises(BacktestCancelled):
+            self.service.run(
+                "equal-weight",
+                ["AAPL"],
+                date(2024, 1, 2),
+                date(2024, 2, 20),
+                10000,
+                cancelled=lambda: True,
+            )
+        self.assertEqual(self.db.list_backtest_runs(), [])
+        self.assertEqual(self.db.list_portfolios(), [])
 
     pass
 
@@ -224,7 +250,27 @@ class LedgerSafetyTests(unittest.TestCase):
         self.assertIsNone(metrics["cagr"])
         self.assertIsNone(performance_metrics([{"total_value": 100}] * 3, 100)["sharpe"])
 
-    pass
+    def test_jobs_coalesce_metrics_and_bound_activity(self):
+        jobs = JobStore()
+        key = jobs.create()
+        for i in range(2200):
+            jobs.emit(key, {"type": "trade", "message": str(i)})
+        jobs.emit(
+            key,
+            {
+                "type": "daily_return",
+                "date": "2024-01-02",
+                "cash": 100,
+                "market_value": 0,
+                "total_value": 100,
+            },
+        )
+        snap = jobs.snapshot(key, after=2199)
+        self.assertEqual(len(snap["events"]), 1)
+        self.assertEqual(snap["latest"]["total_value"], 100)
+        self.assertEqual(len(jobs.snapshot(key)["events"]), 2000)
+        jobs.cancel(key)
+        self.assertTrue(jobs.cancelled(key))
 
 
 if __name__ == "__main__":
