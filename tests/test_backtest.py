@@ -252,7 +252,29 @@ class BacktestServiceTests(unittest.TestCase):
             self.assertEqual(len(summary["symbols"]), len(DEFAULT_SYMBOLS))
             self.assertGreater(result.trades_executed, 0)
 
-    pass
+    def test_market_cap_selectors_expand_to_requested_size(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db = seeded_universe_db(Path(tmp))
+            service = BacktestService(db)
+            from algotrading.market_caps import MarketCapService
+
+            MarketCapService(db).refresh(
+                {
+                    "data": {
+                        "rows": [
+                            {
+                                "symbol": symbol,
+                                "name": symbol + " Common Stock",
+                                "marketCap": str(1e12 - i * 1e6),
+                            }
+                            for i, symbol in enumerate(DEFAULT_SYMBOLS)
+                        ]
+                    }
+                }
+            )
+
+            self.assertEqual(len(service._resolve_symbols(["@top50"])), 50)
+            self.assertEqual(len(service._resolve_symbols(["@top100"])), 100)
 
     def test_rsi_strength_executes_and_reports_trade_progress(self):
         with tempfile.TemporaryDirectory() as tmp:
