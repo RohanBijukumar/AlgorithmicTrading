@@ -386,9 +386,35 @@ class BacktestServiceTests(unittest.TestCase):
             self.assertTrue(app_trades)
             self.assertTrue(any(event["type"] == "research" for event in events))
 
-    pass
+    def test_neural_strategy_allows_pre_2024_windows(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db = seeded_backtest_db(Path(tmp))
+            service = BacktestService(db)
 
-    pass
+            result = service.run(
+                "nn-pattern",
+                ["AAPL", "MSFT"],
+                date(2023, 1, 2),
+                date(2024, 1, 10),
+                1000.0,
+                parameters={"lookback_days": 63, "rebalance_days": 5, "top_n": 1},
+            )
+            self.assertGreater(result.run_id, 0)
+
+    def test_hybrid_allows_pre_2024_windows(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db = seeded_backtest_db(Path(tmp))
+            service = BacktestService(db)
+
+            result = service.run(
+                "hybrid",
+                ["AAPL", "MSFT"],
+                date(2023, 1, 2),
+                date(2024, 1, 10),
+                1000.0,
+                parameters={"lookback_days": 63, "rebalance_days": 5, "top_n": 1},
+            )
+            self.assertGreater(result.run_id, 0)
 
     def test_additional_cross_sectional_strategies_execute(self):
         strategies = {

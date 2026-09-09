@@ -67,7 +67,13 @@ class EngineTests(unittest.TestCase):
             )
         self.assertEqual(len(self.db.list_portfolios()), before)
 
-    pass
+    def test_neural_report_persists_model_provenance(self):
+        result = self.run_strategy("nn-pattern")
+        summary = backtest_report(self.db, result.run_id)["run"]["result_summary"]
+        self.assertEqual(summary["model_artifacts"][0]["model"], "walk_forward_v2")
+        self.assertEqual(len(summary["model_artifacts"][0]["sha256"]), 64)
+        self.assertIn(2008, summary["model_artifacts"][0]["fold_years"])
+        self.assertTrue(any("purged" in warning for warning in summary["warnings"]))
 
     pass
 
