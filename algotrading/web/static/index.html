@@ -103,7 +103,7 @@
               <label class="full-width">Symbols<input name="symbols" value="SPY" list="symbol-selectors" required title="Tickers, @universe, or @topN by current market cap"></label>
               <datalist id="symbol-selectors"><option value="@universe"></option><option value="@top100"></option><option value="@top50"></option></datalist>
               <label>From<input name="from" type="date" required title="First test date; earlier cached bars warm up signals"></label><label>To<input name="to" type="date" required title="Last test date"></label>
-              <label>Starting cash<input name="cash" type="number" value="100000" min="1" step="100" required title="Any positive starting balance in USD"></label><label>Benchmark<input name="benchmark" value="SPY" required title="Reference buy-and-hold investment"></label>
+              <label>Starting cash<input name="cash" type="number" value="100000" min="0.00000001" step="any" required title="Any positive starting balance in USD"></label><label>Benchmark<input name="benchmark" value="SPY" required title="Reference buy-and-hold investment"></label>
               <label data-param="lookback_days">Lookback<input name="lookback_days" type="number" min="1" title="Historical sessions in the signal"></label>
               <label data-param="rebalance_days">Rebalance<input name="rebalance_days" type="number" min="1" title="Sessions between allocation decisions"></label>
               <label data-param="top_n">Positions<input name="top_n" type="number" min="1" title="Maximum number of selected assets"></label>

@@ -75,7 +75,17 @@ class EngineTests(unittest.TestCase):
         self.assertIn(2008, summary["model_artifacts"][0]["fold_years"])
         self.assertTrue(any("purged" in warning for warning in summary["warnings"]))
 
-    pass
+    def test_arbitrary_positive_starting_cash(self):
+        for cash in (10000, 12345.67, 0.5, 100.001):
+            with self.subTest(cash=cash):
+                result = self.service.run(
+                    "buy-and-hold", ["AAPL"], date(2024, 1, 2), date(2024, 2, 20), cash
+                )
+                portfolio = self.db.get_portfolio(result.portfolio_name)
+                self.assertEqual(portfolio["starting_cash"], cash)
+                self.assertTrue(
+                    PortfolioService(self.db).audit(result.portfolio_name, result.end)["reconciled"]
+                )
 
     def test_costs_and_attribution_reconcile(self):
         result = self.run_strategy(
