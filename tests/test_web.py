@@ -57,7 +57,21 @@ class WebTests(unittest.TestCase):
         self.handler._handle_get(f"/api/backtests/{job['result']['run_id']}/report", {})
         json.dumps(self.responses[-1], default=str, allow_nan=False)
 
-    pass
+    def test_preflight_does_not_create_runs(self):
+        self.handler._handle_post(
+            "/api/backtests/preflight",
+            {
+                "strategy": "rsi-strength",
+                "symbols": ["AAPL", "NVDA"],
+                "from": "2024-01-02",
+                "to": "2024-02-15",
+                "lookback_days": 14,
+            },
+        )
+        result = self.responses[-1]
+        self.assertEqual(result["missing_symbols"], ["NVDA"])
+        self.assertEqual(result["warmup_missing"], ["AAPL"])
+        self.assertEqual(self.db.list_backtest_runs(), [])
 
     def test_cross_origin_mutation_rejected(self):
         self.handler.headers = {"Origin": "https://unrelated.example", "Host": "127.0.0.1:8000"}
@@ -66,4 +80,7 @@ class WebTests(unittest.TestCase):
         self.handler.headers = {"Origin": "http://127.0.0.1:8000", "Host": "127.0.0.1:8000"}
         self.handler._check_origin()
 
-    pass
+    def test_trade_ticket_never_truncates_fractional_shares(self):
+        for value in [1.2, "1.2", True, -1, "NaN", "Infinity"]:
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                _shares(value)
