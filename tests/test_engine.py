@@ -110,7 +110,16 @@ class EngineTests(unittest.TestCase):
         self.assertGreater(result.metrics["slippage"], 0)
         self.assertTrue(all(p["cash"] >= 0 for p in report["equity"]))
 
-    pass
+    def test_backtest_valuations_are_frozen_after_data_refresh(self):
+        result = self.run_strategy()
+        service = PortfolioService(self.db)
+        before = service.value(result.portfolio_name, result.end)
+        self.db.insert_market_bars([_bar("AAPL", result.end, 10)])
+        after = service.value(result.portfolio_name, result.end)
+        self.assertEqual(before, after)
+        self.assertTrue(service.audit(result.portfolio_name, result.end)["reconciled"])
+        later = service.value(result.portfolio_name, date(2025, 1, 1))
+        self.assertEqual(before.total_value, later.total_value)
 
     def test_no_fill_on_missing_session(self):
         with self.db.connect() as conn:
@@ -217,13 +226,41 @@ class EngineTests(unittest.TestCase):
         self.assertEqual(self.db.list_backtest_runs(), [])
         self.assertEqual(self.db.list_portfolios(), [])
 
-    pass
+    def test_report_export_matches_ledger(self):
+        result = self.run_strategy()
+        report = backtest_report(self.db, result.run_id)
+        records = list(csv.DictReader(io.StringIO(export_csv(report))))
+        self.assertAlmostEqual(float(records[-1]["total_value"]), result.metrics["end_value"])
+        json.dumps(report, default=str, allow_nan=False)
 
     pass
 
-    pass
+    def test_deleting_portfolio_removes_linked_report(self):
+        result = self.run_strategy()
+        self.db.delete_portfolio(result.portfolio_name)
+        self.assertIsNone(self.db.get_backtest_run(result.run_id))
 
-    pass
+    def test_cli_supports_costs_preflight_and_export(self):
+        parser = build_parser()
+        args = parser.parse_args(
+            [
+                "backtest",
+                "run",
+                "dual-momentum",
+                "--symbols",
+                "SPY",
+                "--from",
+                "2024-01-01",
+                "--to",
+                "2025-01-01",
+                "--commission",
+                "0.25",
+                "--check-only",
+            ]
+        )
+        self.assertEqual(args.commission, 0.25)
+        self.assertTrue(args.check_only)
+        self.assertEqual(parser.parse_args(["backtest", "export", "1"]).format, "json")
 
 
 class LedgerSafetyTests(unittest.TestCase):
