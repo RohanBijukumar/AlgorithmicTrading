@@ -233,7 +233,13 @@ class EngineTests(unittest.TestCase):
         self.assertAlmostEqual(float(records[-1]["total_value"]), result.metrics["end_value"])
         json.dumps(report, default=str, allow_nan=False)
 
-    pass
+    def test_market_queries_are_cached(self):
+        with patch.object(self.db, "get_bars", wraps=self.db.get_bars) as get_bars:
+            result = self.run_strategy(
+                "momentum", {"lookback_days": 5, "rebalance_days": 1}, symbols=["AAPL", "MSFT"]
+            )
+            self.assertLessEqual(get_bars.call_count, 3)
+        self.assertGreater(result.trades_executed, 0)
 
     def test_deleting_portfolio_removes_linked_report(self):
         result = self.run_strategy()
