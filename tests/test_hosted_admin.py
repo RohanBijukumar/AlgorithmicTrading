@@ -1,9 +1,13 @@
 import tempfile
 import unittest
+from importlib.util import find_spec
 from pathlib import Path
 from uuid import uuid4
 
 from test_backtest import seeded_backtest_db
+
+if find_spec("jwt") is None:
+    raise unittest.SkipTest("Install .[hosted,hosted-test] for hosted operator tests")
 
 from algotrading.hosted_admin import backup, seed_market
 from algotrading.portfolio import PortfolioService

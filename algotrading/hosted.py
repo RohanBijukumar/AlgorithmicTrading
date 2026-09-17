@@ -86,6 +86,7 @@ class Runtime:
         self.rates = defaultdict(deque)
         self.lock = Lock()
         self.slots = BoundedSemaphore(2)
+        self.request_slots = BoundedSemaphore(8)
         self.executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="research")
 
     def workspace(self, user):
@@ -175,8 +176,21 @@ def validate_work(path, body, handler):
             symbols = handler.market.list_symbols() if body.get("all") else supplied
             if len(handler.backtests._resolve_symbols(symbols)) > 100:
                 raise Rejected(422, "Hosted sync is limited to 100 symbols per request")
-        elif len(handler.backtests._resolve_symbols(supplied)) > 2000:
-            raise Rejected(422, "Hosted backtests are limited to 2000 symbols")
+        else:
+            selected = handler.backtests._resolve_symbols(supplied)
+            if len(selected) > 2000:
+                raise Rejected(422, "Hosted backtests are limited to 2000 symbols")
+            symbols = set(selected + [body.get("benchmark") or "SPY"])
+            # Replay loads pre-start history too; bound actual input rows, not just window length.
+            with handler.database.connect() as conn:
+                count = conn.execute(
+                    f"SELECT COUNT(*) FROM market_bars WHERE symbol IN ({','.join('?' for _ in symbols)}) AND trading_date <= ?",
+                    (*symbols, end.isoformat()),
+                ).fetchone()[0]
+            if count > 500000:
+                raise Rejected(
+                    422, "Hosted replay is limited to 500,000 cached bars; select fewer symbols"
+                )
     if body.get("agent_online_research") not in (None, "", 0, "0", False):
         raise Rejected(422, "Online discovery is disabled in hosted mode; use cached research")
 
@@ -264,9 +278,9 @@ def create_app(settings=None, verifier=None):
                 data = bytearray()
                 async with asyncio.timeout(10):
                     async for chunk in request.stream():
-                        data.extend(chunk)
-                        if len(data) > MAX_BODY:
+                        if len(data) + len(chunk) > MAX_BODY:
                             raise Rejected(413, "Request exceeds 64 KB")
+                        data.extend(chunk)
                 body = json.loads(data or b"{}")
                 if not isinstance(body, dict):
                     raise ValueError("JSON object required")
@@ -285,7 +299,12 @@ def create_app(settings=None, verifier=None):
                 response = JSONResponse({"ok": True, "db": "Private workspace", "hosted": True})
             elif path.startswith("/api/"):
                 workspace = runtime.workspace(user)
-                response = await run_in_threadpool(dispatch, request, body, workspace, runtime)
+                if not runtime.request_slots.acquire(blocking=False):
+                    raise Rejected(429, "Server busy; try again shortly")
+                try:
+                    response = await run_in_threadpool(dispatch, request, body, workspace, runtime)
+                finally:
+                    runtime.request_slots.release()
             elif (
                 path in ("/", "/index.html", "/app.js", "/styles.css", "/lucide.min.js")
                 and not mutation

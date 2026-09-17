@@ -46,6 +46,8 @@ def seed_market(registry, subject, source):
 
 
 def backup(registry, output):
+    if output.resolve().is_relative_to(registry.root.resolve()):
+        raise ValueError("Backup destination must be outside the hosted data root")
     output.mkdir(parents=True, mode=0o700, exist_ok=False)
     # Stop new work for a consistent cross-database snapshot, including the registry.
     with (registry.root / ".server.lock").open("a") as lock:

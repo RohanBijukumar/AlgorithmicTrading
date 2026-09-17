@@ -6,8 +6,11 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 from uuid import uuid4
 
-import jwt
-from cryptography.hazmat.primitives.asymmetric import rsa
+try:
+    import jwt
+    from cryptography.hazmat.primitives.asymmetric import rsa
+except ImportError as exc:
+    raise unittest.SkipTest("Install .[hosted,hosted-test] for identity tests") from exc
 
 from algotrading.identity import AccessVerifier, HostedSettings
 from algotrading.tenancy import Registry
@@ -90,6 +93,30 @@ class IdentityTests(unittest.TestCase):
         ]:
             with self.assertRaises(ValueError):
                 HostedSettings(origin, self.settings.issuer, self.settings.audience, Path("/tmp/x"))
+
+    def test_missing_claims_and_signing_service_outage_fail_closed(self):
+        token = jwt.encode(
+            {"sub": self.subject}, self.key, algorithm="RS256", headers={"kid": "test"}
+        )
+        with self.assertRaises(jwt.InvalidTokenError):
+            self.verifier.verify(token)
+        self.verifier.refreshed -= 301
+        self.verifier.client.get_signing_keys.side_effect = jwt.PyJWKClientConnectionError(
+            "offline"
+        )
+        with self.assertRaises(jwt.PyJWKClientConnectionError):
+            self.verifier.verify(self.token())
+        with self.assertRaises(jwt.InvalidTokenError):
+            self.verifier.verify(self.token())
+
+    def test_rotation_drops_removed_signing_keys(self):
+        self.verifier.verify(self.token())
+        self.verifier.refreshed -= 301
+        self.verifier.client.get_signing_keys.return_value = [
+            SimpleNamespace(key_id="rotated", key=self.key.public_key())
+        ]
+        with self.assertRaises(jwt.InvalidTokenError):
+            self.verifier.verify(self.token())
 
     def test_registry_isolated_and_disable_is_immediate(self):
         with tempfile.TemporaryDirectory() as tmp:

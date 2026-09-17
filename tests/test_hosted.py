@@ -1,11 +1,16 @@
 import tempfile
+import time
 import unittest
+from datetime import date, timedelta
 from pathlib import Path
 from unittest.mock import Mock
 from uuid import uuid4
 
-import jwt
-from starlette.testclient import TestClient
+try:
+    import jwt
+    from starlette.testclient import TestClient
+except ImportError as exc:
+    raise unittest.SkipTest("Install .[hosted,hosted-test] for hosted API tests") from exc
 
 from algotrading.hosted import MAX_BODY, create_app
 from algotrading.identity import HostedSettings
@@ -55,6 +60,44 @@ class HostedTests(unittest.TestCase):
                 self.assertEqual(
                     self.client.get(path, headers=self.headers("forged")).status_code, 401
                 )
+
+    def test_identity_headers_and_duplicate_assertions_cannot_bypass_auth(self):
+        response = self.client.get(
+            "/api/portfolios",
+            headers={
+                "Cf-Access-Authenticated-User-Email": "admin@example.com",
+                "X-Forwarded-User": "alice",
+            },
+        )
+        self.assertEqual(response.status_code, 401)
+        response = self.client.get(
+            "/api/portfolios",
+            headers=[("Cf-Access-Jwt-Assertion", "alice"), ("Cf-Access-Jwt-Assertion", "bob")],
+        )
+        self.assertEqual(response.status_code, 401)
+
+    def test_local_server_refuses_public_bind(self):
+        from algotrading.web import run_server
+
+        with self.assertRaisesRegex(ValueError, "loopback"):
+            run_server(host="0.0.0.0")
+
+    def test_private_errors_do_not_leak_provider_paths(self):
+        jobs = self.app.state.runtime.workspace(self.alice).sync
+        job_id = jobs.create()
+        jobs.emit(job_id, {"status": "failed", "message": "/private/secret/token", "symbol": "SPY"})
+        jobs.update(
+            job_id, status="failed", error="/private/secret/token", errors={"SPY": "secret"}
+        )
+        response = self.client.get("/api/market-sync-jobs/" + job_id, headers=self.headers())
+        self.assertNotIn("secret", response.text)
+
+    def test_second_hosted_process_cannot_share_the_data_root(self):
+        second = create_app(self.settings, self.verifier)
+        with self.assertRaisesRegex(RuntimeError, "exactly one process"):
+            with TestClient(second, base_url=self.settings.origin):
+                pass
+        second.state.runtime.close()
 
     def test_disabled_user_rejected_and_jobs_cancel(self):
         workspace = self.app.state.runtime.workspace(self.alice)
@@ -107,6 +150,43 @@ class HostedTests(unittest.TestCase):
             404,
         )
         self.assertFalse(workspace.backtests.cancelled(job_id))
+
+    def test_hosted_backtest_finishes_with_private_metrics_and_report(self):
+        from test_backtest import _bar
+
+        db = self.registry.database(self.alice)
+        db.insert_market_bars(
+            [_bar("SPY", date(2024, 1, 2) + timedelta(days=i), 100.0 + i) for i in range(12)]
+        )
+        response = self.client.post(
+            "/api/backtests",
+            headers=self.headers(),
+            json={
+                "strategy": "buy-and-hold",
+                "symbols": ["SPY"],
+                "from": "2024-01-02",
+                "to": "2024-01-12",
+                "cash": 10000.37,
+                "benchmark": "SPY",
+            },
+        )
+        self.assertEqual(response.status_code, 202, response.text)
+        job_id = response.json()["job_id"]
+        for _ in range(100):
+            job = self.client.get("/api/backtest-jobs/" + job_id, headers=self.headers()).json()[
+                "job"
+            ]
+            if job["status"] != "running":
+                break
+            time.sleep(0.01)
+        self.assertEqual(job["status"], "completed", job)
+        self.assertTrue(job["points"])
+        self.assertNotIn("daily_return", [event.get("type") for event in job["events"]])
+        run_id = job["result"]["run_id"]
+        for suffix in ["report", "export"]:
+            path = f"/api/backtests/{run_id}/{suffix}"
+            self.assertEqual(self.client.get(path, headers=self.headers()).status_code, 200)
+            self.assertEqual(self.client.get(path, headers=self.headers("bob")).status_code, 404)
 
     def test_csrf_requires_exact_origin_and_ajax_header(self):
         for extra in [
