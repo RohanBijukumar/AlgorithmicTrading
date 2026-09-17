@@ -12,3 +12,12 @@ node_modules/
 
 data/*
 !data/.gitkeep
+
+.env
+.env.*
+!.env.example
+secrets/
+hosted-data/
+backups/
+*.pem
+*.key

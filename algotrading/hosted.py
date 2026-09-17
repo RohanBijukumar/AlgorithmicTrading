@@ -276,6 +276,7 @@ def create_app(settings=None, verifier=None):
                     {
                         "hosted": True,
                         "label": user["label"],
+                        "workspace": user["workspace"],
                         "logout_url": "/cdn-cgi/access/logout",
                         "paper_only": True,
                     }

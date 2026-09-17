@@ -25,6 +25,7 @@
         <span class="environment-label"><span class="status-dot" id="status-dot"></span><span id="status-text">Connecting</span></span>
         <span class="local-label">LOCAL SIMULATION</span>
         <span id="db-path" class="db-path" title="Shared storage for web and CLI">SQLite</span>
+        <div id="account-controls" hidden><span id="account-label" class="db-path"></span><a id="account-logout" class="subtle-button" href="/cdn-cgi/access/logout" title="End this browser's access session"><i data-lucide="log-out"></i>Sign out</a></div>
         <button class="subtle-button" id="help-open" title="Execution assumptions and terminology"><i data-lucide="circle-help"></i>Reference</button>
       </div>
     </aside>
@@ -194,5 +195,6 @@
   </dialog>
   <dialog id="confirm-dialog"><h2 id="confirm-title">Confirm deletion</h2><p id="confirm-message"></p><div class="form-actions"><button id="confirm-no" class="secondary-button">Cancel</button><button id="confirm-yes" class="danger-button">Delete</button></div></dialog>
   <div id="toast" role="status"></div><div class="chart-tooltip" id="chart-tooltip-layer" hidden></div>
+  <dialog id="session-dialog"><h2>Session unavailable</h2><p>Sign in again or contact the workspace operator.</p><a class="primary-button" href="/cdn-cgi/access/logout" title="Clear the expired session and sign in again">Sign in again</a></dialog>
 </body>
 </html>

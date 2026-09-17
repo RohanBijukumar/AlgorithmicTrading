@@ -9,6 +9,8 @@ const esc = (v) => String(v ?? "").replace(/[&<>"']/g, c => ({
   "'": "&#39;"
 } [c]));
 const state = {
+  hosted: false,
+  storageKey: "",
   view: "overview",
   catalog: [],
   coverage: [],
@@ -90,13 +92,21 @@ async function api(path, options = {}) {
   try {
     const response = await fetch(path, {
       ...options,
+      credentials: "same-origin",
+      redirect: "manual",
       headers: {
         "Content-Type": "application/json",
+        "X-Requested-With": "AlgorithmicTrading",
         ...options.headers
       },
       signal: controller.signal
     });
+    if (response.type === "opaqueredirect" || response.status === 401) {
+      lockSession();
+      throw new Error("Session ended. Sign in again.");
+    }
     const body = await response.json();
+    if (response.status === 403 && body.error?.startsWith("Account")) lockSession();
     if (!response.ok || body.error) throw new Error(body.error || response.statusText);
     return body;
   } catch (error) {
@@ -110,6 +120,15 @@ const post = (path, body = {}) => api(path, {
   method: "POST",
   body: JSON.stringify(body)
 });
+const storageKey = key => state.storageKey ? key + ":" + state.storageKey : key;
+function clearHostedSession() {
+  ["backtestJob", "syncJob"].forEach(key => sessionStorage.removeItem(storageKey(key)));
+}
+function lockSession() {
+  clearHostedSession();
+  const dialog = $("#session-dialog");
+  if (!dialog.open) dialog.showModal();
+}
 
 function on(selector, event, callback) {
   $(selector).addEventListener(event, async e => {
@@ -296,7 +315,7 @@ async function startSync(payload) {
     job_id
   } = await post("/api/market/sync", payload);
   state.syncJob = job_id;
-  sessionStorage.setItem("syncJob", job_id);
+  sessionStorage.setItem(storageKey("syncJob"), job_id);
   return watchSync(job_id);
 }
 async function watchSync(id) {
@@ -327,7 +346,7 @@ async function watchSync(id) {
     }
   } finally {
     if (terminal) {
-      sessionStorage.removeItem("syncJob");
+      sessionStorage.removeItem(storageKey("syncJob"));
       state.syncJob = null;
     }
     $("#sync-cancel").hidden = terminal;
@@ -803,7 +822,7 @@ async function runBacktest(event) {
       $("#bt-status").textContent = "Needs attention";
       throw error;
     }
-    localStorage.setItem("backtestDraft", JSON.stringify(formData($("#backtest-form"))));
+    if (!state.hosted) localStorage.setItem("backtestDraft", JSON.stringify(formData($("#backtest-form"))));
     $("#backtest-log").textContent = "";
     $("#bt-insights").innerHTML = "";
     $("#bt-report-actions").hidden = true;
@@ -820,7 +839,7 @@ async function runBacktest(event) {
       job_id
     } = await post("/api/backtests", payload);
     state.backtestJob = job_id;
-    sessionStorage.setItem("backtestJob", job_id);
+    sessionStorage.setItem(storageKey("backtestJob"), job_id);
     await watchBacktest(job_id);
   });
 }
@@ -890,7 +909,7 @@ async function watchBacktest(id) {
     throw error;
   } finally {
     if (terminal) {
-      sessionStorage.removeItem("backtestJob");
+      sessionStorage.removeItem(storageKey("backtestJob"));
       state.backtestJob = null;
     }
     $("#bt-cancel").hidden = terminal;
@@ -1279,16 +1298,26 @@ async function init() {
   });
   $('#starter-form input[name="from"]').value = (lastYear - 1) + "-01-01";
   bindActions();
+  $("#session-dialog").addEventListener("cancel", event => event.preventDefault());
   decorate();
   navigate(location.hash.slice(1) || "overview", false);
   try {
     const health = await api("/api/health");
+    if (health.hosted) {
+      const session = await api("/api/session");
+      state.hosted = true;
+      state.storageKey = session.workspace;
+      $("#account-label").textContent = session.label;
+      $("#account-controls").hidden = false;
+      $(".local-label").textContent = "PRIVATE SIMULATION";
+      $("#account-logout").onclick = clearHostedSession;
+    }
     $("#db-path").textContent = health.db;
     $("#status-text").textContent = "Connected";
     $("#status-dot").classList.add("ok");
     await loadStrategies();
     try {
-      const draft = JSON.parse(localStorage.getItem("backtestDraft") || "null");
+      const draft = state.hosted ? null : JSON.parse(localStorage.getItem("backtestDraft") || "null");
       if (draft) setStrategy(draft.strategy, false, draft);
     } catch {}
     const results = await Promise.allSettled([loadOverview(), loadUniverse(), loadPortfolios(), loadRuns()]);
@@ -1305,12 +1334,12 @@ async function init() {
         await loadBars(d.symbol, d.from, d.to, d.metric);
       }
     }
-    const bt = sessionStorage.getItem("backtestJob"),
-      sync = sessionStorage.getItem("syncJob");
+    const bt = sessionStorage.getItem(storageKey("backtestJob")),
+      sync = sessionStorage.getItem(storageKey("syncJob"));
     if (bt) watchBacktest(bt).catch(e => {
       toast(e.message);
       if (e.message.includes("not found")) {
-        sessionStorage.removeItem("backtestJob");
+        sessionStorage.removeItem(storageKey("backtestJob"));
         state.backtestJob = null;
         $("#bt-cancel").hidden = true;
       }
@@ -1318,7 +1347,7 @@ async function init() {
     if (sync) watchSync(sync).catch(e => {
       toast(e.message);
       if (e.message.includes("not found")) {
-        sessionStorage.removeItem("syncJob");
+        sessionStorage.removeItem(storageKey("syncJob"));
         state.syncJob = null;
         $("#sync-cancel").hidden = true;
       }
