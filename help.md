@@ -304,3 +304,33 @@ python3 tools/benchmark.py --db data/trading_simulator.sqlite3 --symbols SPY QQQ
 The benchmark copies the source SQLite database into a temporary directory, evaluates fixed defaults, prints timing/performance/accounting checks, then removes only that temporary copy. It performs no downloads and changes no existing research results.
 
 See [verification notes](docs/validation.md) for frontend checks, measured runtimes, and known verification limits.
+
+## Hosted Access and Operations
+
+Install `.[hosted,hosted-test]` for hosted mode; the local CLI remains dependency-free.
+Full setup, required environment variables and cloud MFA configuration are in
+[docs/hosting.md](docs/hosting.md). All operator commands use those environment
+variables and must run as the service OS user, not through the web interface.
+
+| Command / Function | Purpose and Usage |
+| --- | --- |
+| `uvicorn algotrading.hosted:create_app --factory --host 127.0.0.1 --workers 1` | Start the authenticated ASGI origin behind a private Tunnel; never use the local UI server for hosting. |
+| `python -m algotrading.hosted_admin add --subject UUID --label Alice` | Provision an existing, verified Access user ID with a new empty workspace. Does not create an IdP password. |
+| `python -m algotrading.hosted_admin list` | Show provisioned accounts, enabled status and trusted-operator CLI database paths. |
+| `python -m algotrading.hosted_admin disable --subject UUID` | Deny subsequent requests; running jobs cancel at their next checkpoint. Also revoke Access/IdP membership. |
+| `python -m algotrading.hosted_admin seed-market --subject UUID --source PATH` | With server stopped, copy only prices, symbol metadata and caps from a read-only source into an empty user workspace. |
+| `python -m algotrading.hosted_admin backup --output PATH` | With server stopped, snapshot all account databases and registry into a new directory outside the hosted root; verify SQLite integrity. |
+| `HostedSettings.from_env()` | Validate the HTTPS origin, fixed Access issuer/AUD and absolute private data directory. Missing/invalid settings fail startup. |
+| `AccessVerifier.verify(token)` | Verify RS256 signature, issuer, audience, required claims, lifetime and canonical user subject. Uses bounded signing-key refreshes. |
+| `Registry.provision/get/list/disable/database` | Operator-controlled identity mapping and private database lookup; no automatic signup or email-based authorization. |
+| `create_app(settings=None, verifier=None)` | Build the hosted application, request protections and single-instance lifespan. The verifier argument is dependency injection for offline tests, not a runtime auth-bypass setting. |
+| `Runtime.admit/submit/close` | Bound per-user request rates and global background work; cancel cooperative jobs on shutdown. |
+| `HostedHandler` | Reuse the existing CLI/web services within the authenticated user's database and private job stores. |
+| `PrivateJobs` | Private progress/cancellation with account-disable checks and sanitized provider failures. |
+| `tools/test_hosted_browser.py` | Optional Chromium desktop/mobile regression check with ephemeral signed test identities; no network listener, real gateway, or production data. Requires Playwright/Chromium. |
+
+The hosted UI displays the signed-in account and a gateway sign-out link. Expired
+or revoked access locks interaction until sign-in. Authentication cookies and MFA
+are managed by the gateway, not browser local storage. Hosted drafts are not stored
+persistently. Ordinary users have no access to account administration or other
+users' portfolios, reports, downloads, or jobs. This is still paper trading only.

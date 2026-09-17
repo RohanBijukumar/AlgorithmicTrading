@@ -85,3 +85,35 @@ The independent fixed-window evaluation produced 24 base/stress runs, all accoun
 - Background jobs are in-memory, cooperative, and local-only; server crashes/restarts do not resume work.
 - The service has no authentication, broker connection, paper/live reconciliation, or live risk controls. Use the loopback host.
 - Accounting and regression tests cover known invariants, not every possible data/provider/strategy failure.
+# Hosted Security Verification (September 17, 2026)
+
+The hosted release adds offline signed-JWT and ASGI tests for token forgery,
+issuer/audience/expiry, signing-key rotation/outages, allowlist checks, account
+disable, identity-header spoofing, duplicate assertions, portfolio/report/job
+isolation, CSRF, host validation, body/rate/worker bounds, sanitized errors,
+single-process enforcement, market-only imports and verified backups.
+
+The full suite was run in the project virtual environment with hosted dependencies.
+Two optional PyTorch training tests are skipped in that environment; the new
+security tests do run. `tools/test_hosted_browser.py` exercises real Chromium at
+1440x1000 and 390x844 with ephemeral signed identities and intercepted ASGI
+transport: private accounts, fractional cash, mobile sign-out, expired-session
+locking, script compatibility with CSP, and no page-level horizontal overflow.
+It does not simulate Cloudflare or prove the external MFA policy.
+
+The production dependency lock passed `pip-audit` with no known vulnerabilities
+after upgrading Starlette to 1.6.0. This is an advisory lookup at a point in time,
+not a security certification. Docker Compose configuration parses successfully;
+the image build and actual Tunnel/IdP deployment were not verified because the
+Docker daemon was unavailable and cloud credentials/domain were not configured.
+
+Reproduce the browser check after installing `playwright` and Chromium:
+
+```bash
+.venv/bin/python -m playwright install chromium
+.venv/bin/python tools/test_hosted_browser.py --output-dir /tmp/hosted-browser-check
+```
+
+Do not launch publicly before completing the deployment-specific acceptance
+checks in [hosting.md](hosting.md) and an independent security review. Never
+connect funded brokerage accounts to this release.

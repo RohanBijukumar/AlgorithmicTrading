@@ -185,4 +185,32 @@ Browser visual verification across desktop/mobile remains necessary before calli
 - Point-in-time constituents, delisting outcomes, historical sector classifications.
 - Broker-accurate corporate actions, liquidity/market impact, trading calendars, paper/live adapters.
 - Immutable raw-data archives, experiment-search accounting, untouched forward/paper neural trials, and point-in-time sector/constituent data.
-- Persisted/restartable background jobs and authenticated deployment.
+- Persisted/restartable background jobs and distributed worker coordination.
+- Production gateway/MFA policy verification, security review, deployment and restore drills.
+
+## Invited Multi-User Hosting
+
+The CLI and local UI remain single-owner tools. The unauthenticated local server
+must bind only to loopback. The separate hosted entry point is Uvicorn/Starlette
+behind a private Cloudflare Tunnel and a whole-hostname Access policy.
+
+Authentication is delegated to a managed IdP and Access, with required MFA. The
+origin independently verifies signed application JWTs and requires an operator-
+provisioned immutable subject. No signup/password/recovery implementation is added
+to the app. Operators send individual invitations through their chosen channel.
+
+Every hosted user receives a separate SQLite workspace and job stores. All legacy
+services operate within that workspace, including reports, exports and deletion.
+No local owner's portfolio data is automatically migrated. Optional market-only
+seeding is allowlisted, read-only at source, and requires an empty destination.
+
+Required controls include exact-origin/custom-header mutation checks, secure
+response headers, fail-closed authentication, private files, generic errors,
+structured audit events, bounded requests/compute, account disable, verified
+backups and a one-process lock. Hosted execution remains paper-only; online
+discovery is disabled. Restartable queues, horizontal scaling and real brokerage
+execution are not implemented. MFA and network isolation are deployment controls
+that tests of this repository alone cannot prove.
+
+See [hosting runbook](docs/hosting.md) and [security threat model](docs/security.md)
+for launch prerequisites and the additional brokerage security gate.

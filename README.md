@@ -2,6 +2,12 @@
 
 A local research workspace for historical market data, simulated portfolios, and strategy backtesting. The web UI and CLI share the same SQLite database. No brokerage account, cloud service, or paid API is required. This is a simulator, not a live execution system.
 
+For invited remote users, follow the separate [secure hosting setup](docs/hosting.md).
+Hosted mode adds managed login with required MFA, explicitly provisioned private
+workspaces, and operator account/backup tools. Cloudflare Access and identity-provider
+configuration are required before going online. Do not publish the local server;
+it now accepts loopback bindings only. See the [security boundary](docs/security.md).
+
 ## 1. Start the workspace
 
 Requires Python 3.11 or newer. Run from this directory:
