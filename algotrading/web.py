@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ipaddress
 import json
 import mimetypes
 import threading
@@ -27,6 +28,10 @@ STATIC_DIR = Path(__file__).resolve().parent / "web" / "static"
 def run_server(
     db_path: Path | str = DEFAULT_DB_PATH, host: str = "127.0.0.1", port: int = 8000
 ) -> None:
+    if host != "localhost" and not ipaddress.ip_address(host).is_loopback:
+        raise ValueError(
+            "The unauthenticated local UI must bind to loopback; use hosted mode online"
+        )
     db = Database(db_path)
     db.initialize()
 
@@ -214,9 +219,9 @@ class AppHandler(BaseHTTPRequestHandler):
                 raise ValueError("start date must be on or before end date")
             symbols = self.backtests._resolve_symbols(symbols)
             job_id = self.market_sync_jobs.create(total=len(symbols))
-            threading.Thread(
-                target=self._run_market_sync_job, args=(job_id, symbols, body), daemon=True
-            ).start()
+            self._submit_job(
+                self.market_sync_jobs, self._run_market_sync_job, job_id, symbols, body
+            )
             self._json({"job_id": job_id, "total": len(symbols)}, HTTPStatus.ACCEPTED)
         elif path == "/api/portfolios":
             portfolio_id = self.portfolios.create(body["name"], float(body["cash"]))
@@ -254,9 +259,7 @@ class AppHandler(BaseHTTPRequestHandler):
                     "No data for the selected symbols and dates. Sync market data first."
                 )
             job_id = self.backtest_jobs.create()
-            threading.Thread(
-                target=self._run_backtest_job, args=(job_id, body, params), daemon=True
-            ).start()
+            self._submit_job(self.backtest_jobs, self._run_backtest_job, job_id, body, params)
             self._json({"job_id": job_id}, HTTPStatus.ACCEPTED)
         elif path.startswith("/api/backtest-jobs/") and path.endswith("/cancel"):
             self.backtest_jobs.cancel(path.split("/")[3])
@@ -266,6 +269,9 @@ class AppHandler(BaseHTTPRequestHandler):
             self._json({"ok": True})
         else:
             self._json({"error": "not found"}, HTTPStatus.NOT_FOUND)
+
+    def _submit_job(self, store, target, job_id, *args):
+        threading.Thread(target=target, args=(job_id, *args), daemon=True).start()
 
     def _run_market_sync_job(self, job_id: str, symbols: list[str], body: dict) -> None:
         market = self.market
