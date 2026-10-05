@@ -1,3 +1,8 @@
+# README IS WORK IN PROGRESS!
+
+I have a cleaner, more user-friendly readme in the works, but for now, this is something I had set up earlier on in the project.
+
+
 # AlgorithmicTrading
 
 A local research workspace for historical market data, simulated portfolios, and strategy backtesting. The web UI and CLI share the same SQLite database. No brokerage account, cloud service, or paid API is required. This is a simulator, not a live execution system.
